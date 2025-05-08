@@ -137,55 +137,87 @@ def save_audio_segments(file_path, output_folder, sr=22050, segment_duration=10)
         print(f'Saved {output_file}')
 
 def plot_predictions(file_path, predictions, sr=22050, segment_duration=10, segment_index=0):
-    signal, sr = librosa.load(file_path, sr=sr)
-    segment_length = segment_duration * sr
-    start = segment_index * segment_length
-    end = min((segment_index + 1) * segment_length, len(signal))
-    segment_signal = signal[start:end]
-
-    # Debug prints
-    print(f"Plotting segment {segment_index}")
-    print(f"Start time: {start/sr:.2f}s")
-    print(f"End time: {end/sr:.2f}s")
-    print(f"All predictions: {predictions}")
-
-    # Filter predictions for this segment
-    segment_predictions = []
-    for pred in predictions:
-        pred_time = float(pred['time'])
-        if start/sr <= pred_time < end/sr:
-            segment_predictions.append(pred)
-            print(f"Including prediction {pred} in segment {segment_index}")
-
-    # Pad if needed
-    if len(segment_signal) < segment_length:
-        segment_signal = np.pad(segment_signal, (0, segment_length - len(segment_signal)), mode='constant')
-
-    fig, ax = plt.subplots(figsize=(16, 10))
+    if file_path is None or not os.path.exists(file_path):
+        # Create a simple error image instead of raising an error
+        fig, ax = plt.subplots(figsize=(16, 10))
+        ax.text(0.5, 0.5, "Error: Audio file not found", ha='center', va='center', fontsize=20)
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+        ax.axis('off')
+        
+        buffer = BytesIO()
+        plt.savefig(buffer, format='png', dpi=100, bbox_inches='tight')
+        buffer.seek(0)
+        plt.close(fig)
+        
+        return base64.b64encode(buffer.getvalue()).decode('utf-8')
     
-    # Plot waveform
-    librosa.display.waveshow(segment_signal, sr=sr, alpha=0.5, ax=ax)
-    
-    # Plot predictions with clearer markers
-    for pred in segment_predictions:
-        label = pred['note']
-        time_abs = pred['time']
-        time_relative = time_abs - (start / sr)
-        ax.axvline(x=time_relative, color='red', alpha=0.8, ymin=0.4, ymax=0.6, linestyle='--')
-        ax.text(time_relative, max(segment_signal) * 1.2, label, color='r')
+    try:
+        # Load audio file
+        signal, sr = librosa.load(file_path, sr=sr)
+        segment_length = segment_duration * sr
+        start = segment_index * segment_length
+        end = min((segment_index + 1) * segment_length, len(signal))
+        segment_signal = signal[start:end]
 
-    ax.set_xlabel("Time (s)")
-    ax.set_ylabel("Amplitude")
-    ax.set_title(f"Segment {segment_index + 1} - Audio Waveform with Note Predictions")
-    ax.grid(True, alpha=0.3)
+        # Debug prints
+        print(f"Plotting segment {segment_index}")
+        print(f"Start time: {start/sr:.2f}s")
+        print(f"End time: {end/sr:.2f}s")
+        print(f"All predictions: {predictions}")
 
-    # Save plot
-    buffer = BytesIO()
-    plt.savefig(buffer, format='png', dpi=100, bbox_inches='tight')
-    buffer.seek(0)
-    plt.close(fig)
+        # Filter predictions for this segment
+        segment_predictions = []
+        for pred in predictions:
+            pred_time = float(pred['time'])
+            if start/sr <= pred_time < end/sr:
+                segment_predictions.append(pred)
+                print(f"Including prediction {pred} in segment {segment_index}")
 
-    return base64.b64encode(buffer.getvalue()).decode('utf-8')
+        # Pad if needed
+        if len(segment_signal) < segment_length:
+            segment_signal = np.pad(segment_signal, (0, segment_length - len(segment_signal)), mode='constant')
+
+        fig, ax = plt.subplots(figsize=(16, 10))
+        
+        # Plot waveform
+        librosa.display.waveshow(segment_signal, sr=sr, alpha=0.5, ax=ax)
+        
+        # Plot predictions with clearer markers
+        for pred in segment_predictions:
+            label = pred['note']
+            time_abs = pred['time']
+            time_relative = time_abs - (start / sr)
+            ax.axvline(x=time_relative, color='red', alpha=0.8, ymin=0.4, ymax=0.6, linestyle='--')
+            ax.text(time_relative, max(segment_signal) * 1.2, label, color='r')
+
+        ax.set_xlabel("Time (s)")
+        ax.set_ylabel("Amplitude")
+        ax.set_title(f"Segment {segment_index + 1} - Audio Waveform with Note Predictions")
+        ax.grid(True, alpha=0.3)
+
+        # Save plot
+        buffer = BytesIO()
+        plt.savefig(buffer, format='png', dpi=100, bbox_inches='tight')
+        buffer.seek(0)
+        plt.close(fig)
+
+        return base64.b64encode(buffer.getvalue()).decode('utf-8')
+    except Exception as e:
+        # If any error occurs during plotting, return an error image
+        print(f"Error in plot_predictions: {str(e)}")
+        fig, ax = plt.subplots(figsize=(16, 10))
+        ax.text(0.5, 0.5, f"Error creating plot: {str(e)}", ha='center', va='center', fontsize=16, wrap=True)
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+        ax.axis('off')
+        
+        buffer = BytesIO()
+        plt.savefig(buffer, format='png', dpi=100, bbox_inches='tight')
+        buffer.seek(0)
+        plt.close(fig)
+        
+        return base64.b64encode(buffer.getvalue()).decode('utf-8')
 
 def split_stems(file_path, output_folder='stems'):
     os.makedirs(output_folder, exist_ok=True)
@@ -236,9 +268,16 @@ def upload():
         if file.filename == '':
             return jsonify({'error': 'No selected file'})
             
+        # Create uploads folder if it doesn't exist
+        if not os.path.exists(UPLOAD_FOLDER):
+            os.makedirs(UPLOAD_FOLDER)
+            
         file_path = os.path.join(UPLOAD_FOLDER, file.filename)
         file.save(file_path)
         uploaded_file_path = file_path
+        
+        print(f"File uploaded and saved to: {uploaded_file_path}")
+        print(f"File exists after upload: {os.path.exists(uploaded_file_path)}")
         
         return jsonify({'success': True, 'filename': file.filename})
         
@@ -261,9 +300,13 @@ def predict():
                 file_path = os.path.join(UPLOAD_FOLDER, file.filename)
                 file.save(file_path)
                 uploaded_file_path = file_path
+                print(f"File re-uploaded in predict route: {uploaded_file_path}")
         
-        if not uploaded_file_path or not os.path.exists(uploaded_file_path):
+        if not uploaded_file_path:
             return jsonify({'error': 'No file has been uploaded'})
+            
+        if not os.path.exists(uploaded_file_path):
+            return jsonify({'error': f'File not found at path: {uploaded_file_path}'})
         
         # Get audio duration
         signal, sr = librosa.load(uploaded_file_path, sr=22050)
@@ -313,6 +356,9 @@ def process_stems():
     global uploaded_file_path
     if not uploaded_file_path:
         return jsonify({'error': 'No file uploaded yet'})
+        
+    if not os.path.exists(uploaded_file_path):
+        return jsonify({'error': f'File not found at path: {uploaded_file_path}'})
     
     try:
         stem_paths = split_stems(uploaded_file_path)
@@ -407,12 +453,49 @@ def get_segments():
 
 @app.route('/get_segment_image', methods=['GET'])
 def get_segment_image():
-    global uploaded_file_path
-    index = int(request.args.get('index'))
-    print(f'Getting image for segment {index}')
-    img_base64 = plot_predictions(uploaded_file_path, predictions, segment_index=index)
-    print(f'Generated image for segment {index}')
-    return jsonify({'image': img_base64})
+    global uploaded_file_path, predictions
+    
+    try:
+        index = int(request.args.get('index', 0))
+        print(f'Getting image for segment {index}')
+        
+        # Check if file exists
+        if not uploaded_file_path:
+            print("Error: uploaded_file_path is None")
+            # Return error image instead of raising an error
+            return jsonify({'image': create_error_image("No file has been uploaded")})
+            
+        if not os.path.exists(uploaded_file_path):
+            print(f"Error: File not found at path: {uploaded_file_path}")
+            # Return error image instead of raising an error
+            return jsonify({'image': create_error_image(f"File not found: {uploaded_file_path}")})
+        
+        # Check if predictions exist
+        if not predictions or len(predictions) == 0:
+            print("Warning: No predictions available")
+            # Could still show waveform without predictions
+        
+        img_base64 = plot_predictions(uploaded_file_path, predictions, segment_index=index)
+        print(f'Generated image for segment {index}')
+        return jsonify({'image': img_base64})
+    except Exception as e:
+        print(f"Error in get_segment_image: {str(e)}")
+        return jsonify({'image': create_error_image(f"Error: {str(e)}")})
+
+def create_error_image(error_message):
+    """Create an image displaying an error message"""
+    fig, ax = plt.subplots(figsize=(16, 10))
+    ax.text(0.5, 0.5, error_message, ha='center', va='center', fontsize=20)
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.axis('off')
+    
+    buffer = BytesIO()
+    plt.savefig(buffer, format='png', dpi=100, bbox_inches='tight')
+    buffer.seek(0)
+    plt.close(fig)
+    
+    return base64.b64encode(buffer.getvalue()).decode('utf-8')
 
 if __name__ == '__main__':
     import os
