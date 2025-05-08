@@ -84,7 +84,8 @@ document.getElementById('view-segment').addEventListener('click', function () {
   fetch('/get_segment_image?index=' + index)
     .then((response) => response.json())
     .then((data) => {
-      document.getElementById('segment-image').innerHTML = '<img src="data:image/png;base64,' + data.image + '">';
+      console.log('Received image data:', data.image.slice(0, 30));
+      document.getElementById('segment-image').innerHTML = '<img src="data:image/png;base64,' + data.image + '?' + new Date().getTime() + '">';
     })
     .catch((error) => {
       console.error('Error:', error);

@@ -146,10 +146,11 @@ def plot_predictions(file_path, predictions, sr=22050, segment_duration=10, segm
         ax.axis('off')
         
         buffer = BytesIO()
-        plt.savefig(buffer, format='png', dpi=100, bbox_inches='tight')
+        plt.savefig(buffer, format='png', dpi=50, bbox_inches='tight')
         buffer.seek(0)
         plt.close(fig)
         
+        print(f"Segment {segment_index} plot created successfully.")
         return base64.b64encode(buffer.getvalue()).decode('utf-8')
     
     try:
@@ -203,6 +204,7 @@ def plot_predictions(file_path, predictions, sr=22050, segment_duration=10, segm
         plt.close(fig)
 
         return base64.b64encode(buffer.getvalue()).decode('utf-8')
+    
     except Exception as e:
         # If any error occurs during plotting, return an error image
         print(f"Error in plot_predictions: {str(e)}")
@@ -218,6 +220,7 @@ def plot_predictions(file_path, predictions, sr=22050, segment_duration=10, segm
         plt.close(fig)
         
         return base64.b64encode(buffer.getvalue()).decode('utf-8')
+    
 
 def split_stems(file_path, output_folder='stems'):
     os.makedirs(output_folder, exist_ok=True)
@@ -476,7 +479,7 @@ def get_segment_image():
             # We'll still show the waveform without predictions
         
         img_base64 = plot_predictions(uploaded_file_path, predictions, segment_index=index)
-        print(f'Generated image for segment {index}')
+        print(f'Generated image for segment {index}: {img_base64[:30]}...')
         return jsonify({'image': img_base64})
     except Exception as e:
         print(f"Error in get_segment_image: {str(e)}")
