@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Model Pendeteksi Melodi</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  </head>
+  <body>
+    <h1>Melody Detection</h1>
+    <div class="container">
+      <form id="uploadForm" action="/upload" method="post" enctype="multipart/form-data">
+        <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click();">
+          <input type="file" id="fileInput" name="file" />
+          <label for="fileInput">Drag & Drop Files or Browse</label>
+          <span>(.wav/.mp3)</span>
+        </div>
+        <div class="uploaded-file" id="uploadedFile" style="display: none">
+          <div class="stem-audio-container">
+            <div class="stem-audio-player">
+              <div class="stem-label">Original</div>
+              <audio id="audioPreview" controls>
+                <source id="audioSource" src="" type="audio/mpeg" />
+                Your browser does not support the audio element.
+              </audio>
+            </div>
+          </div>
+          <span id="fileName" class="file-name"></span>
+        </div>
+        <div class="button-container" id="buttonContainer" style="display: none">
+          <button type="button" class="button" id="predictButton">Predict Melody</button>
+          <button type="button" class="button" id="splitStemsButton">Split into Stems</button>
+        </div>
+      </form>
+      <div id="progressContainer" style="display: none">
+        <h2>Processing...</h2>
+        <div class="progress-bar">
+          <div class="progress-bar-fill" id="progressBarFill"></div>
+        </div>
+      </div>
+      <div id="segmentButtonsContainer" style="display: none">
+        <h2>Segments</h2>
+        <div id="buttonsContainer"></div>
+      </div>
+      <div id="stemsContainer" style="display: none">
+        <h2>Audio Stems</h2>
+        <div class="stem-selector">
+          <select id="stemSelect"></select>
+          <button type="button" class="button" id="predictStemButton">Predict Selected Stem</button>
+        </div>
+        <div id="stemAudioContainer" class="stem-audio-container"></div>
+        <div id="currentStemInfo" style="margin-top: 10px; font-style: italic"></div>
+      </div>
+      <div id="segment-dropdown" style="display: none">
+        <label for="segments">Select Segment:</label>
+        <select id="segments"></select>
+        <button id="view-segment">View Segment</button>
+      </div>
+      <div id="plot" style="display: none">
+        <h2>Predict Melody</h2>
+        <img id="predictionPlot" src="#" alt="Plot Prediksi" />
+        <div class="button-container">
+          <button type="button" class="button" id="newUploadButton">Upload a new file</button>
+        </div>
+      </div>
+      <div id="segment-image"></div>
+    </div>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script>
+      $(document).ready(function () {
+        $('#uploadForm').on('submit', function (event) {
+          event.preventDefault();
+          var formData = new FormData(this);
+          $.ajax({
+            url: '/predict',
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function (response) {
+              var segmentTimes = response.segmentTimes;
+              var $segments = $('#segments');
+              $segments.empty();
+              segmentTimes.forEach(function (time, index) {
+                $segments.append(new Option('Segment ' + (index + 1) + ' (' + time.toFixed(2) + 's)', index));
+              });
+              $('#segment-dropdown').show();
+            },
+          });
+        });
+
+        $('#view-segment').on('click', function () {
+          var index = $('#segments').val();
+          $.ajax({
+            url: '/get_segment_image',
+            type: 'GET',
+            data: { index: index },
+            success: function (response) {
+              $('#segment-image').html('<img src="data:image/png;base64,' + response.image + '">');
+            },
+          });
+        });
+      });
+    </script>
+  </body>
+</html>
