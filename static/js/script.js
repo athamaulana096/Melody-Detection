@@ -1,3 +1,4 @@
+// Modified script.js file with bug fixes
 document.getElementById('fileInput').addEventListener('change', function () {
   var file = this.files[0];
   var fileName = file.name;
@@ -70,6 +71,11 @@ document.getElementById('predictButton').addEventListener('click', function () {
       if (document.getElementById('currentStemInfo')) {
         document.getElementById('currentStemInfo').textContent = '';
       }
+
+      // Automatically load the first segment image after prediction
+      if (data.segmentTimes.length > 0) {
+        loadSegmentImage(0);
+      }
     })
     .catch((error) => {
       document.getElementById('progressContainer').style.display = 'none';
@@ -78,18 +84,29 @@ document.getElementById('predictButton').addEventListener('click', function () {
     });
 });
 
-document.getElementById('view-segment').addEventListener('click', function () {
-  var index = document.getElementById('segments').value;
+// Helper function to load segment images
+function loadSegmentImage(index) {
+  // Show a loading indicator
+  document.getElementById('segment-image').innerHTML = '<div style="padding: 20px; color: #999;">Loading image...</div>';
 
   fetch('/get_segment_image?index=' + index)
     .then((response) => response.json())
     .then((data) => {
+      if (data.error) {
+        document.getElementById('segment-image').innerHTML = '<div style="padding: 20px; color: #ff6666;">Error: ' + data.error + '</div>';
+        return;
+      }
       document.getElementById('segment-image').innerHTML = '<img src="data:image/png;base64,' + data.image + '">';
     })
     .catch((error) => {
       console.error('Error:', error);
-      alert('Error getting segment image. See console for details.');
+      document.getElementById('segment-image').innerHTML = '<div style="padding: 20px; color: #ff6666;">Error loading image</div>';
     });
+}
+
+document.getElementById('view-segment').addEventListener('click', function () {
+  var index = document.getElementById('segments').value;
+  loadSegmentImage(index);
 });
 
 document.getElementById('newUploadButton').addEventListener('click', function () {
@@ -104,7 +121,10 @@ document.getElementById('newUploadButton').addEventListener('click', function ()
   document.getElementById('segment-image').innerHTML = '';
   document.getElementById('stemSelect').innerHTML = '';
   document.getElementById('stemsContainer').style.display = 'none';
-  document.getElementById('currentStemInfo').textContent = '';
+
+  if (document.getElementById('currentStemInfo')) {
+    document.getElementById('currentStemInfo').textContent = '';
+  }
 
   // Reset audio preview
   var audioPreview = document.getElementById('audioPreview');
@@ -230,6 +250,11 @@ document.getElementById('predictStemButton').addEventListener('click', function 
 
       // Clear any previous images
       document.getElementById('segment-image').innerHTML = '';
+
+      // Automatically load the first segment image
+      if (data.segmentTimes.length > 0) {
+        loadSegmentImage(0);
+      }
     })
     .catch((error) => {
       document.getElementById('progressContainer').style.display = 'none';

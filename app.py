@@ -462,25 +462,26 @@ def get_segment_image():
         # Check if file exists
         if not uploaded_file_path:
             print("Error: uploaded_file_path is None")
-            # Return error image instead of raising an error
-            return jsonify({'image': create_error_image("No file has been uploaded")})
+            return jsonify({'image': create_error_image("No file has been uploaded"), 
+                           'error': 'No file has been uploaded'})
             
         if not os.path.exists(uploaded_file_path):
             print(f"Error: File not found at path: {uploaded_file_path}")
-            # Return error image instead of raising an error
-            return jsonify({'image': create_error_image(f"File not found: {uploaded_file_path}")})
+            return jsonify({'image': create_error_image(f"File not found: {uploaded_file_path}"),
+                           'error': f'File not found: {uploaded_file_path}'})
         
         # Check if predictions exist
         if not predictions or len(predictions) == 0:
             print("Warning: No predictions available")
-            # Could still show waveform without predictions
+            # We'll still show the waveform without predictions
         
         img_base64 = plot_predictions(uploaded_file_path, predictions, segment_index=index)
         print(f'Generated image for segment {index}')
         return jsonify({'image': img_base64})
     except Exception as e:
         print(f"Error in get_segment_image: {str(e)}")
-        return jsonify({'image': create_error_image(f"Error: {str(e)}")})
+        return jsonify({'image': create_error_image(f"Error: {str(e)}"),
+                       'error': str(e)})
 
 def create_error_image(error_message):
     """Create an image displaying an error message"""
